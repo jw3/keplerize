@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
 use chrono::DateTime;
+use clap::Parser;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde::de::Error;
 
@@ -65,29 +66,69 @@ impl From<Rec> for MyRow {
     }
 }
 
+/// Parse mf-json into a kepler.gl trip dataset
+#[derive(Clone, Debug, Parser)]
+struct Opts {
+    /// Path to the input mf-json
+    input: String,
+
+    /// Path to the output json
+    output: String,
+
+    /// Unique id of the dataset, optional
+    #[clap(long, default_value = "my-dataset")]
+    id: String,
+
+    /// Unique id of the dataset, optional
+    #[clap(long, default_value = "My Dataset")]
+    label: String,
+
+    /// Maximum number of records to write
+    #[clap(short, long)]
+    limit: Option<usize>,
+
+    /// Filter out trips with less than this number posits
+    #[clap(long, default_value = "1")]
+    min_trip_size: usize,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let buf = File::open("/tmp/out-json.txt").map(BufReader::new)?;
-    let lines: Result<Vec<_>, _> = buf.lines().collect();
+    let opts: Opts = Opts::parse();
+
+    let input = File::open(opts.input)
+        .map(BufReader::new)
+        .expect("open input");
+
+    let output = File::options()
+        .create(true)
+        .write(true)
+        .open(opts.output)
+        .expect("open output");
+
+    let lines: Result<Vec<_>, _> = input.lines().collect();
     let rows: Vec<_> = lines?
         .into_iter()
         .flat_map(|s| serde_json::from_str::<Rec>(&s))
         .map(MyRow::from)
+        .filter(|r| r.0.geometry.coordinates.len() >= opts.min_trip_size)
         .collect();
+
+    let rows = if let Some(limit) = opts.limit {
+        rows.into_iter().take(limit).collect()
+    } else {
+        rows
+    };
+
     let ds = Dataset::<MyRow> {
         info: Info {
-            id: "example 2",
-            label: "MF-JSON Example",
+            id: &opts.id,
+            label: &opts.label,
         },
         data: Data {
             fields: &["id".into()],
             rows: &rows,
         },
     };
-
-    let output = File::options()
-        .create(true)
-        .write(true)
-        .open("/tmp/out-kepler.txt")?;
 
     let serialized = serde_json::to_string(&ds).unwrap();
     writeln!(&output, "{}", &serialized)?;
