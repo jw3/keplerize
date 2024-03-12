@@ -11,6 +11,7 @@ use keplerize::{Data, Dataset, Feature, Info, LineString, Row};
 #[derive(Deserialize, Debug)]
 struct Rec {
     pub id: u64,
+    pub vt: u32,
     pub json: Mf,
 }
 
@@ -23,7 +24,7 @@ struct Mf {
 }
 
 fn str_to_ts<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<i64>, D::Error> {
-    let s: Vec<String> = Deserialize::deserialize(d)?;
+    let s: Vec<&str> = Deserialize::deserialize(d)?;
     let r: Vec<_> = s
         .iter()
         .flat_map(|x| DateTime::parse_from_str(x, "%Y-%m-%dT%T%#z"))
@@ -42,7 +43,7 @@ fn str_to_ts<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<i64>, D::Error> {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-struct MyRow(Feature, u64);
+struct MyRow(Feature, u64, u32);
 
 #[typetag::serde]
 impl Row for MyRow {}
@@ -62,7 +63,7 @@ impl From<Rec> for MyRow {
             //geometry_type: "LineString",
             coordinates: coords.collect(),
         };
-        MyRow(Feature { geometry: g }, src.id)
+        MyRow(Feature { geometry: g }, src.id, src.vt)
     }
 }
 
@@ -125,7 +126,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             label: &opts.label,
         },
         data: Data {
-            fields: &["id".into()],
+            fields: &["id".into(), "vessel-type".into()],
             rows: &rows,
         },
     };
