@@ -1,6 +1,9 @@
+use std::fs::File;
+use std::io::{BufRead, BufReader, Write};
+
 use chrono::DateTime;
-use serde::{Deserialize, Deserializer, Serialize};
 use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize};
 
 use keplerviz::{Data, Dataset, Feature, Info, LineString, Row};
 
@@ -62,19 +65,14 @@ impl From<Rec> for MyRow {
     }
 }
 
-fn main() {
-    let input = r#"{"id":367716330,"json":{
-    "type":"MovingPoint",
-    "coordinates":[[-89.90329,29.89745],[-89.9033,29.89743],[-89.90324,29.89739],[-89.90326,29.89741],[-89.90325,29.89742],[-89.90325,29.89742]],
-    "datetimes":["2019-12-31T19:00:08-05","2019-12-31T19:01:12-05","2019-12-31T19:02:22-05","2019-12-31T19:03:32-05","2019-12-31T19:04:42-05","2019-12-31T19:07:10-05"],
-    "lower_inc":true,"upper_inc":true,"interpolation":"Linear"}}"#;
-
-    // let rec = DateTime::parse_from_str("2019-12-31T19:01:12-05", "%Y-%m-%dT%T%#z");
-    let rec: Rec = serde_json::from_str(input).unwrap();
-    // dbg!(&rec);
-
-    let source_data = vec![rec];
-    let rows: Vec<MyRow> = source_data.into_iter().map(MyRow::from).collect();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut buf = File::open("/tmp/out-json.txt").map(BufReader::new)?;
+    let lines: Result<Vec<_>, _> = buf.lines().collect();
+    let rows: Vec<_> = lines?
+        .into_iter()
+        .flat_map(|s| serde_json::from_str::<Rec>(&s))
+        .map(MyRow::from)
+        .collect();
     let ds = Dataset::<MyRow> {
         info: Info {
             id: "example 2",
@@ -86,6 +84,13 @@ fn main() {
         },
     };
 
-    let serialized = serde_json::to_string_pretty(&ds).unwrap();
-    println!("{}", serialized);
+    let output = File::options()
+        .create(true)
+        .write(true)
+        .open("/tmp/out-kepler.txt")?;
+
+    let serialized = serde_json::to_string(&ds).unwrap();
+    writeln!(&output, "{}", &serialized)?;
+
+    Ok(())
 }
