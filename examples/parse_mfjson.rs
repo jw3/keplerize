@@ -2,10 +2,10 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
 use chrono::DateTime;
-use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
+use serde::de::Error;
 
-use keplerviz::{Data, Dataset, Feature, Info, LineString, Row};
+use keplerize::{Data, Dataset, Feature, Info, LineString, Row};
 
 #[derive(Deserialize, Debug)]
 struct Rec {
@@ -66,7 +66,7 @@ impl From<Rec> for MyRow {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut buf = File::open("/tmp/out-json.txt").map(BufReader::new)?;
+    let buf = File::open("/tmp/out-json.txt").map(BufReader::new)?;
     let lines: Result<Vec<_>, _> = buf.lines().collect();
     let rows: Vec<_> = lines?
         .into_iter()

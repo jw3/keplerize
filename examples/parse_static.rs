@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
-use keplerviz::{Data, Dataset, Feature, Info, LineString, Row};
+use keplerize::{Data, Dataset, Feature, Info, LineString, Row};
 
 #[derive(Copy, Clone, Deserialize, Serialize, Debug)]
 enum Vendor {
