@@ -1,13 +1,13 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
-use chrono::DateTime;
 use clap::Parser;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde::de::Error;
 
-use keplerize::{Data, Dataset, Info, Row, TFeature, TLineString};
+use keplerize::{Data, Dataset, Feature, Info, LineString, Row};
 
+// source mf json, converting this to geojson
 #[derive(Deserialize, Debug)]
 struct Rec {
     pub id: u64,
@@ -18,56 +18,26 @@ struct Rec {
 #[derive(Deserialize, Debug)]
 struct Mf {
     pub coordinates: Vec<[f64; 2]>,
-
-    #[serde(deserialize_with = "str_to_ts")]
-    pub datetimes: Vec<i64>,
-}
-
-fn str_to_ts<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<i64>, D::Error> {
-    let s: Vec<&str> = Deserialize::deserialize(d)?;
-    let r: Vec<_> = s
-        .iter()
-        .flat_map(|x| DateTime::parse_from_str(x, "%Y-%m-%dT%T%#z"))
-        .map(|x| x.timestamp())
-        .collect();
-
-    if s.len() == r.len() {
-        Ok(r)
-    } else {
-        Err(Error::custom(format!(
-            "lossy ts convert: {} to {}",
-            s.len(),
-            r.len()
-        )))
-    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-struct MyRow(TFeature, u64, u32);
+struct MyRow(Feature, u64, u32);
 
 #[typetag::serde]
 impl Row for MyRow {}
 
 impl From<Rec> for MyRow {
     fn from(src: Rec) -> Self {
-        assert_eq!(src.json.coordinates.len(), src.json.datetimes.len());
-        let coords = src
-            .json
-            .datetimes
-            .into_iter()
-            .map(|t| t as f64)
-            .zip(src.json.coordinates)
-            .into_iter()
-            .map(|(t, [x, y])| [x, y, 0.0, t]);
-        let g = TLineString {
+        let coords = src.json.coordinates.into_iter().map(|([x, y])| [x, y, 0.0]);
+        let g = LineString {
             //geometry_type: "LineString",
             coordinates: coords.collect(),
         };
-        MyRow(TFeature { geometry: g }, src.id, src.vt)
+        MyRow(Feature { geometry: g }, src.id, src.vt)
     }
 }
 
-/// Parse mf-json into a kepler.gl trip dataset
+/// Parse mf-json into a kepler.gl line dataset
 #[derive(Clone, Debug, Parser)]
 struct Opts {
     /// Path to the input mf-json
