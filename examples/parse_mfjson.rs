@@ -6,7 +6,7 @@ use clap::Parser;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde::de::Error;
 
-use keplerize::{Data, Dataset, Info, Row, TFeature, TLineString};
+use keplerize::{Data, Dataset, Feature, Info, LineString, Row};
 
 #[derive(Deserialize, Debug)]
 struct Rec {
@@ -43,7 +43,7 @@ fn str_to_ts<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<i64>, D::Error> {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-struct MyRow(TFeature, u64, u32);
+struct MyRow(Feature<LineString>, u64, u32);
 
 #[typetag::serde]
 impl Row for MyRow {}
@@ -59,11 +59,11 @@ impl From<Rec> for MyRow {
             .zip(src.json.coordinates)
             .into_iter()
             .map(|(t, [x, y])| [x, y, 0.0, t]);
-        let g = TLineString {
+        let g = LineString {
             //geometry_type: "LineString",
-            coordinates: coords.collect(),
+            coordinates: coords.map(|x| x.into()).collect(),
         };
-        MyRow(TFeature { geometry: g }, src.id, src.vt)
+        MyRow(Feature { geometry: g }, src.id, src.vt)
     }
 }
 

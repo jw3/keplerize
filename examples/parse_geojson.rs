@@ -21,7 +21,7 @@ struct Mf {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-struct MyRow(Feature, u64, u32);
+struct MyRow(Feature<LineString>, u64, u32);
 
 #[typetag::serde]
 impl Row for MyRow {}
@@ -31,7 +31,7 @@ impl From<Rec> for MyRow {
         let coords = src.json.coordinates.into_iter().map(|([x, y])| [x, y, 0.0]);
         let g = LineString {
             //geometry_type: "LineString",
-            coordinates: coords.collect(),
+            coordinates: coords.map(|x| x.into()).collect(),
         };
         MyRow(Feature { geometry: g }, src.id, src.vt)
     }

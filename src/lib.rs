@@ -24,25 +24,13 @@ pub struct Data<'a, R: Row> {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub struct LineString {
-    pub coordinates: Vec<[f64; 3]>,
+    pub coordinates: Vec<Vec<f64>>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
-pub struct Feature {
-    pub geometry: LineString,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(tag = "type")]
-pub struct TLineString {
-    pub coordinates: Vec<[f64; 4]>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(tag = "type")]
-pub struct TFeature {
-    pub geometry: TLineString,
+pub struct Feature<G> {
+    pub geometry: G,
 }
 
 #[derive(Clone, Serialize, Debug)]
